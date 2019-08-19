@@ -7,6 +7,7 @@ export const remoteDev = connectViaExtension();
 
 type StoreSliceHook<T> = [T, (newState: T) => void];
 
+const listeners = new Map<{}, Set<() => void>>();
 const initialGlobalState = {} as { [key: string]: any };
 
 function factory<T>(
@@ -24,17 +25,16 @@ function factory<T>(
 
     if (!context.has(sliceKey)) {
       context.set(sliceKey, defaultValue);
-      context.get(context)[sliceKey] = new Set();
+      listeners.set(context, new Set());
     }
 
     React.useEffect(() => {
-      const listeners = context.get(context)[sliceKey];
       const listener = () => {
         forceUpdate(prevValue => prevValue + 1);
       };
-      listeners.add(listener);
+      listeners.get(context)!.add(listener);
       return () => {
-        listeners.delete(listener);
+        listeners.get(context)!.delete(listener);
       };
     }, []);
 
@@ -44,19 +44,17 @@ function factory<T>(
         if (typeof recoveredState !== 'object') {
           return;
         }
-        const listeners = context.get(context);
         context.clear();
         Object.keys(recoveredState).forEach((key: string) => {
           context.set(key, recoveredState[key]);
         });
-        context.set(context, listeners);
-        context.get(context)[sliceKey].forEach((fn: () => void) => fn());
+        listeners.get(context)!.forEach((fn: () => void) => fn());
       });
     }, []);
 
     const updateState = (newState: T): void => {
       context.set(sliceKey, newState);
-      context.get(context)[sliceKey].forEach((fn: () => void) => fn());
+      listeners.get(context)!.forEach((fn: () => void) => fn());
       logSend(newState, sliceKey, context);
     };
 
@@ -80,9 +78,7 @@ export function logSend(
 
 function toDebuggableObject(rawMap: Map<any, any>) {
   return Array.from(rawMap.keys()).reduce((acc, cur) => {
-    if (cur !== Object(cur)) {
-      acc[cur] = rawMap.get(cur);
-    }
+    acc[cur] = rawMap.get(cur);
     return acc;
   }, {});
 }
