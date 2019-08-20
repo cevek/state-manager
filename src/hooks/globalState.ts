@@ -7,47 +7,59 @@ export const remoteDev = connectViaExtension();
 remoteDev.init({});
 
 type StoreSliceHook<T> = [T, (newState: T) => void];
-type Listeners = { [key: string]: Set<() => void> };
+type Listeners = Map<string, Set<() => void>>;
 
 export const globalListeners = new Map<{}, Listeners>();
 
 function factory<T>(sliceKey: string, defaultValue?: T) {
   return function(): StoreSliceHook<T> {
-    const forceUpdateListener = useForceUpdate();
+    const forceUpdate = useForceUpdate();
     const context = React.useContext(GlobalStateContext);
 
     if (!globalListeners.has(context)) {
-      globalListeners.set(context, {} as Listeners);
+      globalListeners.set(context, new Map() as Listeners);
     }
 
     const globalStoreListeners = globalListeners.get(context);
 
-    if (!context.hasOwnProperty(sliceKey)) {
+    if (!globalStoreListeners) {
+      throw new Error('no globalStoreListeners');
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(context, sliceKey)) {
       context[sliceKey] = defaultValue;
       remoteDev.send(
-        { type: `${sliceKey}_INIT`, data: defaultValue },
+        { type: `${sliceKey}_INIT`, payload: defaultValue },
         {
           ...context,
           [sliceKey]: defaultValue,
         }
       );
-      globalStoreListeners![sliceKey] = new Set();
+
+      globalStoreListeners.set(sliceKey, new Set());
     }
 
-    const listeners = globalStoreListeners![sliceKey];
+    const listeners = globalStoreListeners.get(sliceKey);
+
+    if (!listeners) {
+      throw new Error('no listeners');
+    }
 
     React.useEffect(() => {
-      listeners.add(forceUpdateListener);
+      listeners.add(forceUpdate);
       return () => {
-        listeners.delete(forceUpdateListener);
+        listeners.delete(forceUpdate);
       };
     }, []);
 
     const updateState = (newState: T) => {
+      if (newState === context[sliceKey]) {
+        return;
+      }
       context[sliceKey] = newState;
       listeners.forEach(fn => fn());
       remoteDev.send(
-        { type: `${sliceKey}_UPDATE`, data: newState },
+        { type: `${sliceKey}_UPDATE`, payload: newState },
         {
           ...context,
           [sliceKey]: newState,

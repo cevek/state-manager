@@ -21,7 +21,7 @@ export default function App() {
 
       const allListeners = globalListeners.get(context);
       if (allListeners) {
-        new Set(...Object.values(allListeners)).forEach(fn => fn());
+        new Set(...allListeners.values()).forEach(fn => fn());
       }
     });
   }, [context]);
