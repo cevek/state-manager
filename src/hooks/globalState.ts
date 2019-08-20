@@ -1,89 +1,63 @@
 import * as React from 'react';
-
-import { Context } from '../index';
-import { connectViaExtension, extractState } from 'remotedev';
+import { GlobalStateContext } from '../index';
+import { connectViaExtension } from 'remotedev';
+import { useForceUpdate } from './useForceUpdate';
 
 export const remoteDev = connectViaExtension();
+remoteDev.init({});
 
 type StoreSliceHook<T> = [T, (newState: T) => void];
+type Listeners = { [key: string]: Set<() => void> };
 
-const listeners = new Map<{}, Set<() => void>>();
-const initialGlobalState = {} as { [key: string]: any };
+export const globalListeners = new Map<{}, Listeners>();
 
-function factory<T>(
-  sliceKey: string,
-  defaultValue: T
-): () => StoreSliceHook<T> {
-  initialGlobalState[sliceKey] = defaultValue;
-  return function() {
-    const [, forceUpdate] = React.useState(0);
-    const context = React.useContext(Context);
+function factory<T>(sliceKey: string, defaultValue?: T) {
+  return function(): StoreSliceHook<T> {
+    const forceUpdateListener = useForceUpdate();
+    const context = React.useContext(GlobalStateContext);
 
-    if (!context.has(context)) {
-      context.set(context, {});
+    if (!globalListeners.has(context)) {
+      globalListeners.set(context, {} as Listeners);
     }
 
-    if (!context.has(sliceKey)) {
-      context.set(sliceKey, defaultValue);
-      listeners.set(context, new Set());
-    }
+    const globalStoreListeners = globalListeners.get(context);
 
-    React.useEffect(() => {
-      const listener = () => {
-        forceUpdate(prevValue => prevValue + 1);
-      };
-      listeners.get(context)!.add(listener);
-      return () => {
-        listeners.get(context)!.delete(listener);
-      };
-    }, []);
-
-    React.useEffect(() => {
-      remoteDev.subscribe(message => {
-        const recoveredState = extractState(message) as { [key: string]: any };
-        if (typeof recoveredState !== 'object') {
-          return;
+    if (!context.hasOwnProperty(sliceKey)) {
+      context[sliceKey] = defaultValue;
+      remoteDev.send(
+        { type: `${sliceKey}_INIT`, data: defaultValue },
+        {
+          ...context,
+          [sliceKey]: defaultValue,
         }
-        context.clear();
-        Object.keys(recoveredState).forEach((key: string) => {
-          context.set(key, recoveredState[key]);
-        });
-        listeners.get(context)!.forEach((fn: () => void) => fn());
-      });
+      );
+      globalStoreListeners![sliceKey] = new Set();
+    }
+
+    const listeners = globalStoreListeners![sliceKey];
+
+    React.useEffect(() => {
+      listeners.add(forceUpdateListener);
+      return () => {
+        listeners.delete(forceUpdateListener);
+      };
     }, []);
 
-    const updateState = (newState: T): void => {
-      context.set(sliceKey, newState);
-      listeners.get(context)!.forEach((fn: () => void) => fn());
-      logSend(newState, sliceKey, context);
+    const updateState = (newState: T) => {
+      context[sliceKey] = newState;
+      listeners.forEach(fn => fn());
+      remoteDev.send(
+        { type: `${sliceKey}_UPDATE`, data: newState },
+        {
+          ...context,
+          [sliceKey]: newState,
+        }
+      );
     };
 
-    return [context.get(sliceKey), updateState];
+    return [context[sliceKey], updateState];
   };
-}
-
-export function logSend(
-  newState: any,
-  sliceKey: string,
-  previousState: Map<any, any>
-) {
-  remoteDev.send(
-    { type: `${sliceKey}_UPDATE`, data: newState },
-    {
-      ...toDebuggableObject(previousState),
-      [sliceKey]: newState,
-    }
-  );
-}
-
-function toDebuggableObject(rawMap: Map<any, any>) {
-  return Array.from(rawMap.keys()).reduce((acc, cur) => {
-    acc[cur] = rawMap.get(cur);
-    return acc;
-  }, {});
 }
 
 export const useFirst = factory('first', 2);
 export const useSecond = factory('second', { b: 2 });
-
-remoteDev.init(initialGlobalState);
