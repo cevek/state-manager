@@ -1,23 +1,24 @@
 import * as React from 'react';
-import { GlobalStateContext } from '../index';
 import { connectViaExtension } from 'remotedev';
 import { useForceUpdate } from './useForceUpdate';
+import { GlobalStoreSliceType, Listener } from '../types/store';
+import { GlobalStateContext } from '../components/Application/Application';
 
 export const remoteDev = connectViaExtension();
 remoteDev.init({});
 
-type StoreSliceHook<T> = [T, (newState: T) => void];
-type Listeners = Map<string, Set<() => void>>;
+export const globalListeners = new Map<{}, Map<string, Listener>>();
 
-export const globalListeners = new Map<{}, Listeners>();
-
-function factory<T>(sliceKey: string, defaultValue?: T) {
-  return function(): StoreSliceHook<T> {
+function factory<T extends GlobalStoreSliceType>(
+  sliceKey: string,
+  defaultValue: T
+) {
+  return function() {
     const forceUpdate = useForceUpdate();
     const context = React.useContext(GlobalStateContext);
 
     if (!globalListeners.has(context)) {
-      globalListeners.set(context, new Map() as Listeners);
+      globalListeners.set(context, new Map<string, Listener>());
     }
 
     const globalStoreListeners = globalListeners.get(context);
@@ -26,16 +27,7 @@ function factory<T>(sliceKey: string, defaultValue?: T) {
       throw new Error('no globalStoreListeners');
     }
 
-    if (!Object.prototype.hasOwnProperty.call(context, sliceKey)) {
-      context[sliceKey] = defaultValue;
-      remoteDev.send(
-        { type: `${sliceKey}_INIT`, payload: defaultValue },
-        {
-          ...context,
-          [sliceKey]: defaultValue,
-        }
-      );
-
+    if (!globalStoreListeners.has(sliceKey)) {
       globalStoreListeners.set(sliceKey, new Set());
     }
 
@@ -60,16 +52,18 @@ function factory<T>(sliceKey: string, defaultValue?: T) {
       listeners.forEach(fn => fn());
       remoteDev.send(
         { type: `${sliceKey}_UPDATE`, payload: newState },
-        {
-          ...context,
-          [sliceKey]: newState,
-        }
+        { ...context, [sliceKey]: newState }
       );
     };
 
-    return [context[sliceKey], updateState];
+    let returnValue = context[sliceKey];
+    if (!Object.hasOwnProperty.call(context, sliceKey)) {
+      returnValue = defaultValue;
+    }
+
+    return [returnValue, updateState] as const;
   };
 }
 
-export const useFirst = factory('first', 2);
+export const useFirst = factory('first', 1);
 export const useSecond = factory('second', { b: 2 });

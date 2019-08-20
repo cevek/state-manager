@@ -7,23 +7,17 @@ export default function Second() {
 
   return (
     <div style={{ display: 'flex' }}>
-      <button onClick={() => setFirstState(firstState + 2)}>
-        change first
-      </button>
+      <button onClick={() => setFirstState(null)}>make first null</button>
       <h1>{JSON.stringify(firstState)}</h1>
-      <button
-        onClick={() => setSecondState({ ...secondState, b: secondState.b + 2 })}
-      >
-        change second
-      </button>
+      <button onClick={() => setSecondState(null)}>make second null</button>
       <h1>{JSON.stringify(secondState)}</h1>
       <button
         onClick={() => {
-          setFirstState(firstState + 2);
-          setSecondState({ ...secondState, b: secondState.b + 2 });
+          setFirstState(null);
+          setSecondState(null);
         }}
       >
-        change all
+        make all null
       </button>
     </div>
   );
