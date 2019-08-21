@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { extractState } from 'remotedev';
-import { GlobalContextType } from '../../types/store';
+import { GlobalContextType, Listener } from '../../types/store';
 import { devUtils } from '../../utils/devUtils';
 
 export const GlobalStateContext = React.createContext<GlobalContextType>({
@@ -10,25 +10,30 @@ export const GlobalStateContext = React.createContext<GlobalContextType>({
 
 type Props = {
   children?: JSX.Element;
-  value: GlobalContextType;
+  value: { [key: string]: unknown };
 };
 
 export default function GlobalStateProvider({ value, children }: Props) {
+  const context = React.useRef({
+    store: value,
+    listeners: new Map<string, Listener>(),
+  });
+
   React.useEffect(() => {
     devUtils.subscribe(message => {
       if (message.type !== 'DISPATCH') {
         return;
       }
-      value.store = extractState(message);
+      context.current.store = extractState(message);
 
-      for (let listenerSet of value.listeners.values()) {
+      for (let listenerSet of context.current.listeners.values()) {
         listenerSet.forEach(listener => listener());
       }
     });
-  }, [value]);
+  }, [context]);
 
   return (
-    <GlobalStateContext.Provider value={value}>
+    <GlobalStateContext.Provider value={context.current}>
       {children}
     </GlobalStateContext.Provider>
   );

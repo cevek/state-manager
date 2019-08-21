@@ -1,5 +1,5 @@
-export type GlobalContextType = {
-  store: { [key: string]: unknown };
+export type GlobalContextType<T = unknown> = {
+  store: { [key: string]: T };
   listeners: Map<string, Listener>;
 };
 

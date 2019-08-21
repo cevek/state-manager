@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { GlobalStateContext } from '../components/GlobalStateProvider/GlobalStateProvider';
-import { Listener } from '../types/store';
+import { GlobalContextType } from '../types/store';
 import { useForceUpdate } from '../hooks/useForceUpdate';
 import { devUtils } from './devUtils';
 
@@ -8,10 +8,9 @@ export default function factory<T>(sliceKey: string, defaultValue: T) {
   return function() {
     const forceUpdate = useForceUpdate();
 
-    const context = React.useContext(GlobalStateContext) as {
-      store: { [key: string]: T };
-      listeners: Map<string, Listener>;
-    };
+    const context = React.useContext(GlobalStateContext) as GlobalContextType<
+      T
+    >;
 
     let listeners = context.listeners.get(sliceKey);
     if (!listeners) {
@@ -29,7 +28,9 @@ export default function factory<T>(sliceKey: string, defaultValue: T) {
 
     const updateState = (newState: T) => {
       if (newState === undefined) {
-        throw new Error('invalid parameter');
+        throw new TypeError(
+          `GlobalStore[${sliceKey}] can't be set to undefined`
+        );
       }
 
       if (newState === context.store[sliceKey]) {
