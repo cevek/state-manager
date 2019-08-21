@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { remoteDev } from '../../hooks/globalState';
 import { extractState } from 'remotedev';
 import { GlobalContextType } from '../../types/store';
-import patchContext from '../../utils/patchContext';
+import { devUtils } from '../../utils/devUtils';
 
 export const GlobalStateContext = React.createContext<GlobalContextType>({
   store: {},
+  listeners: new Map(),
 });
 
 type Props = {
@@ -13,18 +13,23 @@ type Props = {
   value: GlobalContextType;
 };
 
-export default function GlobalStateProvider(props: Props) {
-  const { value } = props;
-
+export default function GlobalStateProvider({ value, children }: Props) {
   React.useEffect(() => {
-    remoteDev.subscribe(message => {
-      patchContext(value, extractState(message));
+    devUtils.subscribe(message => {
+      if (message.type !== 'DISPATCH') {
+        return;
+      }
+      value.store = extractState(message);
+
+      for (let listenerSet of value.listeners.values()) {
+        listenerSet.forEach(listener => listener());
+      }
     });
   }, [value]);
 
   return (
     <GlobalStateContext.Provider value={value}>
-      {props.children}
+      {children}
     </GlobalStateContext.Provider>
   );
 }

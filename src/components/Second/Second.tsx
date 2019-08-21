@@ -8,9 +8,7 @@ export default function Second() {
   return (
     <div style={{ display: 'flex' }}>
       <h1>first {JSON.stringify(firstState)}</h1>
-      <button onClick={() => setSecondState(null)}>
-        make second null
-      </button>
+      <button onClick={() => setSecondState(null)}>make second null</button>
       <h1>second {JSON.stringify(secondState)}</h1>
     </div>
   );

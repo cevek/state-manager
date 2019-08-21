@@ -6,5 +6,5 @@ declare module 'remotedev' {
   };
   export function extractState(obj: {
     type: string;
-  }): { [key: string]: object | number | string | boolean | null } | undefined;
+  }): { [key: string]: unknown };
 }
