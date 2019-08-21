@@ -40,7 +40,11 @@ function factory<T>(sliceKey: string, defaultValue: T) {
     }, []);
 
     const updateState = (newState: T) => {
-      if (newState === context.store[sliceKey] || newState === undefined) {
+      if (newState === undefined) {
+        throw new Error('invalid parameter');
+      }
+
+      if (newState === context.store[sliceKey]) {
         return;
       }
 
