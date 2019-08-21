@@ -1,21 +1,23 @@
 import * as React from 'react';
 import { connectViaExtension } from 'remotedev';
 import { useForceUpdate } from './useForceUpdate';
-import { GlobalStoreSliceType, Listener } from '../types/store';
-import { GlobalStateContext } from '../components/Application/Application';
+import { GlobalContextType, Listener } from '../types/store';
+import { GlobalStateContext } from '../components/GlobalStateProvider/GlobalStateProvider';
 
 export const remoteDev = connectViaExtension();
 remoteDev.init({});
 
-export const globalListeners = new Map<{}, Map<string, Listener>>();
+export const globalListeners = new Map<
+  GlobalContextType,
+  Map<string, Listener>
+>();
 
-function factory<T extends GlobalStoreSliceType>(
-  sliceKey: string,
-  defaultValue: T
-) {
+function factory<T>(sliceKey: string, defaultValue: T) {
   return function() {
     const forceUpdate = useForceUpdate();
-    const context = React.useContext(GlobalStateContext);
+    const context = React.useContext(GlobalStateContext) as {
+      store: { [key: string]: T };
+    };
 
     let globalStoreListeners = globalListeners.get(context);
     if (!globalStoreListeners) {
@@ -28,28 +30,36 @@ function factory<T extends GlobalStoreSliceType>(
       listeners = new Set();
       globalStoreListeners.set(sliceKey, listeners);
     }
+    const sliceListeners = listeners;
 
     React.useEffect(() => {
-      listeners!.add(forceUpdate);
+      sliceListeners.add(forceUpdate);
       return () => {
-        listeners!.delete(forceUpdate);
+        sliceListeners.delete(forceUpdate);
       };
     }, []);
 
     const updateState = (newState: T) => {
-      if (newState === context[sliceKey]) {
+      if (newState === context.store[sliceKey] || newState === undefined) {
         return;
       }
-      context[sliceKey] = newState;
-      listeners!.forEach(fn => fn());
+
+      context.store = {
+        ...context.store,
+        [sliceKey]: newState,
+      };
+
+      sliceListeners.forEach(fn => fn());
       remoteDev.send(
         { type: `${sliceKey}_UPDATE`, payload: newState },
-        { ...context, [sliceKey]: newState }
+        context.store
       );
     };
 
-    let returnValue = context[sliceKey];
-    if (!Object.hasOwnProperty.call(context, sliceKey)) {
+    const { store } = context;
+
+    let returnValue = store[sliceKey];
+    if (!Object.hasOwnProperty.call(store, sliceKey)) {
       returnValue = defaultValue;
     }
 
@@ -58,4 +68,6 @@ function factory<T extends GlobalStoreSliceType>(
 }
 
 export const useFirst = factory('first', 1);
-export const useSecond = factory('second', { b: 2 });
+export const useSecond = factory<{ [key: string]: number } | null>('second', {
+  b: 1,
+});

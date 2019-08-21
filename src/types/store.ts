@@ -1,4 +1,2 @@
-export type GlobalStore = { [key: string]: GlobalStoreSliceType };
-export type GlobalStoreSliceType = object | number | string | boolean | null;
-
+export type GlobalContextType = { store: { [key: string]: unknown } };
 export type Listener = Set<() => void>;
