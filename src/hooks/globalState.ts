@@ -17,30 +17,22 @@ function factory<T extends GlobalStoreSliceType>(
     const forceUpdate = useForceUpdate();
     const context = React.useContext(GlobalStateContext);
 
-    if (!globalListeners.has(context)) {
-      globalListeners.set(context, new Map<string, Listener>());
-    }
-
-    const globalStoreListeners = globalListeners.get(context);
-
+    let globalStoreListeners = globalListeners.get(context);
     if (!globalStoreListeners) {
-      throw new Error('no globalStoreListeners');
+      globalStoreListeners = new Map();
+      globalListeners.set(context, globalStoreListeners);
     }
 
-    if (!globalStoreListeners.has(sliceKey)) {
-      globalStoreListeners.set(sliceKey, new Set());
-    }
-
-    const listeners = globalStoreListeners.get(sliceKey);
-
+    let listeners = globalStoreListeners.get(sliceKey);
     if (!listeners) {
-      throw new Error('no listeners');
+      listeners = new Set();
+      globalStoreListeners.set(sliceKey, listeners);
     }
 
     React.useEffect(() => {
-      listeners.add(forceUpdate);
+      listeners!.add(forceUpdate);
       return () => {
-        listeners.delete(forceUpdate);
+        listeners!.delete(forceUpdate);
       };
     }, []);
 
@@ -49,7 +41,7 @@ function factory<T extends GlobalStoreSliceType>(
         return;
       }
       context[sliceKey] = newState;
-      listeners.forEach(fn => fn());
+      listeners!.forEach(fn => fn());
       remoteDev.send(
         { type: `${sliceKey}_UPDATE`, payload: newState },
         { ...context, [sliceKey]: newState }
