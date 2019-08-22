@@ -31,6 +31,9 @@ export default function GlobalStateProvider({ value, children }: Props) {
         listenerSet.forEach(listener => listener());
       }
     });
+    return () => {
+      devUtils.unsubscribe();
+    };
   }, [context]);
 
   return (

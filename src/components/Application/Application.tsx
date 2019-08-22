@@ -2,8 +2,7 @@ import * as React from 'react';
 import First from '../First/First';
 import Second from '../Second/Second';
 import GlobalStateProvider from '../GlobalStateProvider/GlobalStateProvider';
-
-export const FetchContext = React.createContext<{ [key: string]: {} }>({});
+import { FetchContext } from '../../utils/fetch';
 
 export default function Application() {
   const [fetchDataState] = React.useState({});

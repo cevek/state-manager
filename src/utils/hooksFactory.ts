@@ -24,7 +24,7 @@ export default function factory<T>(sliceKey: string, defaultValue: T) {
       return () => {
         sliceListeners.delete(forceUpdate);
       };
-    }, []);
+    }, [sliceListeners]);
 
     const updateState = (newState: T) => {
       if (newState === undefined) {
@@ -51,10 +51,9 @@ export default function factory<T>(sliceKey: string, defaultValue: T) {
 
     const { store } = context;
 
-    let returnValue = store[sliceKey];
-    if (!Object.hasOwnProperty.call(store, sliceKey)) {
-      returnValue = defaultValue;
-    }
+    const returnValue = Object.hasOwnProperty.call(store, sliceKey)
+      ? store[sliceKey]
+      : defaultValue;
 
     return [returnValue, updateState] as const;
   };

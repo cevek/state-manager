@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { FetchContext } from '../components/Application/Application';
+
+export const FetchContext = React.createContext<{ [key: string]: {} }>({});
 
 export default function fetchData(url: string, ms: number) {
   const ctx = React.useContext(FetchContext);
