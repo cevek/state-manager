@@ -14,26 +14,27 @@ type Props = {
 };
 
 export default function GlobalStateProvider({ value, children }: Props) {
-  const context = React.useRef({
-    store: value,
+  const [state] = React.useState({
+    store: {},
     listeners: new Map<string, Listener>(),
   });
+  const context = value ? { store: value, listeners: state.listeners } : state;
 
   React.useEffect(() => {
     devUtils.subscribe(message => {
       if (message.type !== 'DISPATCH') {
         return;
       }
-      context.current.store = extractState(message);
+      context.store = extractState(message);
 
-      for (let listenerSet of context.current.listeners.values()) {
+      for (let listenerSet of context.listeners.values()) {
         listenerSet.forEach(listener => listener());
       }
     });
   }, [context]);
 
   return (
-    <GlobalStateContext.Provider value={context.current}>
+    <GlobalStateContext.Provider value={context}>
       {children}
     </GlobalStateContext.Provider>
   );
