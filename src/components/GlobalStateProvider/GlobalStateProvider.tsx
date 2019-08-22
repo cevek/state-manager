@@ -10,7 +10,7 @@ export const GlobalStateContext = React.createContext<GlobalContextType>({
 
 type Props = {
   children?: JSX.Element;
-  value: { [key: string]: unknown };
+  value?: { [key: string]: unknown };
 };
 
 export default function GlobalStateProvider({ value, children }: Props) {
@@ -28,7 +28,7 @@ export default function GlobalStateProvider({ value, children }: Props) {
       }
       context.store = extractState(message);
 
-      for (let listenerSet of context.listeners.values()) {
+      for (let [, listenerSet] of context.listeners) {
         listenerSet.forEach(listener => listener());
       }
     });
