@@ -21,6 +21,7 @@ export default function GlobalStateProvider({ value, children }: Props) {
   const context = value ? { store: value, listeners: state.listeners } : state;
 
   React.useEffect(() => {
+    devUtils.init(context.store);
     devUtils.subscribe(message => {
       if (message.type !== 'DISPATCH') {
         return;
