@@ -12,19 +12,17 @@ export default function First() {
       </button>
       <h1>{JSON.stringify(firstState)}</h1>
       <button
-        onClick={() => setSecondState({ ...secondState, b: secondState.b + 1 })}
+        onClick={() => {
+          if (secondState === null) {
+            setSecondState({ b: 1 });
+          } else {
+            setSecondState({ ...secondState, b: secondState.b + 1 });
+          }
+        }}
       >
         change second
       </button>
       <h1>{JSON.stringify(secondState)}</h1>
-      <button
-        onClick={() => {
-          setFirstState(firstState + 1);
-          setSecondState({ ...secondState, b: secondState.b + 1 });
-        }}
-      >
-        change all
-      </button>
     </div>
   );
 }
