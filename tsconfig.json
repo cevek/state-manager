@@ -1,8 +1,13 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "target": "esnext",
-    "jsx": "react",
-    "module": "commonjs"
-  }
+    "compilerOptions": {
+        "strict": true,
+        "target": "esnext",
+        "jsx": "react",
+        "outDir": "dist",
+        "declaration": true,
+        "inlineSourceMap": true,
+        "declarationMap": true,
+        "module": "commonjs"
+    },
+    "exclude": ["dist", "node_modules"]
 }

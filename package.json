@@ -1,28 +1,22 @@
 {
-  "name": "layout-animation",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "rm -rf dist && parcel src/index.html -p 3000"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "react": "^16.9.0",
-    "react-dom": "^16.9.0"
-  },
-  "browserslist": [
-    "chrome 76"
-  ],
-  "devDependencies": {
-    "parcel-bundler": "^1.12.3",
-    "remotedev": "^0.2.9",
-    "typescript": "^3.5.3",
-    "@types/react": "^16.9.1",
-    "@types/react-dom": "^16.8.5",
-    "prettier": "^1.18.2"
-  }
+    "name": "state",
+    "version": "1.0.0",
+    "description": "",
+    "main": "dist",
+    "types": "dist",
+    "scripts": {
+        "test": ""
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "react": "^16.9.0",
+        "@types/react": "^16.9.2",
+        "remotedev": "^0.2.9"
+    },
+    "files": [
+        "dist",
+        "src"
+    ]
 }

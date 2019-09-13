@@ -1,6 +1,95 @@
 import * as React from 'react';
-import * as ReactDom from 'react-dom';
-import Application from './components/Application/Application';
-import './style.css';
+import { connectViaExtension, extractState } from 'remotedev';
 
-ReactDom.render(<Application />, document.getElementById('root'));
+type ContextType<T = unknown> = {
+    store: { [key: string]: T };
+    listeners: Map<string, Listener>;
+};
+
+type Listener = Set<() => void>;
+
+const devUtils = connectViaExtension();
+
+const StateContext = React.createContext<ContextType>({
+    store: {},
+    listeners: new Map(),
+});
+
+type Props = {
+    children?: JSX.Element;
+    value?: { [key: string]: unknown };
+};
+
+export function StateProvider({ value, children }: Props) {
+    const [state] = React.useState({
+        store: {},
+        listeners: new Map<string, Listener>(),
+    });
+    const context = value ? { store: value, listeners: state.listeners } : state;
+
+    React.useEffect(() => {
+        devUtils.init(context.store);
+        devUtils.subscribe(message => {
+            if (message.type !== 'DISPATCH') {
+                return;
+            }
+            context.store = extractState(message);
+
+            for (let [, listenerSet] of context.listeners) {
+                listenerSet.forEach(listener => listener());
+            }
+        });
+        return () => {
+            devUtils.unsubscribe();
+        };
+    }, [context]);
+
+    return <StateContext.Provider value={context}>{children}</StateContext.Provider>;
+}
+
+let idx = 0;
+export function createState<T>(sliceKey: string, defaultValue: T) {
+    return () => {
+        const [, setState] = React.useState(0);
+        const forceUpdate = () => setState(++idx);
+        const context = React.useContext(StateContext) as ContextType<T>;
+
+        let listeners = context.listeners.get(sliceKey);
+        if (!listeners) {
+            listeners = new Set();
+            context.listeners.set(sliceKey, listeners);
+        }
+        const sliceListeners = listeners;
+
+        React.useEffect(() => {
+            sliceListeners.add(forceUpdate);
+            return () => {
+                sliceListeners.delete(forceUpdate);
+            };
+        }, [sliceListeners]);
+
+        const updateState = (newState: T) => {
+            if (newState === undefined) {
+                throw new TypeError(`GlobalStore[${sliceKey}] can't be set to undefined`);
+            }
+
+            if (newState === context.store[sliceKey]) {
+                return;
+            }
+
+            context.store = {
+                ...context.store,
+                [sliceKey]: newState,
+            };
+
+            sliceListeners.forEach(fn => fn());
+            devUtils.send({ type: `${sliceKey}_UPDATE`, payload: newState }, context.store);
+        };
+
+        const { store } = context;
+
+        const returnValue = Object.hasOwnProperty.call(store, sliceKey) ? store[sliceKey] : defaultValue;
+
+        return [returnValue, updateState] as const;
+    };
+}
