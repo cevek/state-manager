@@ -1,11 +1,11 @@
 {
     "name": "@cevek/state",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "",
     "main": "dist/index",
     "types": "dist/index",
     "scripts": {
-        "test": ""
+        "prepublish": "rm -rf dist && tsc"
     },
     "keywords": [],
     "author": "",
