@@ -16,7 +16,7 @@ const StateContext = React.createContext<ContextType>({
 });
 
 type Props = {
-    children?: JSX.Element;
+    children?: JSX.Element | JSX.Element[];
     value?: { [key: string]: unknown };
 };
 
@@ -83,7 +83,7 @@ export function createState<T>(sliceKey: string, defaultValue: T) {
             };
 
             sliceListeners.forEach(fn => fn());
-            devUtils.send({ type: `${sliceKey}_UPDATE`, payload: newState }, context.store);
+            devUtils.send({ type: `${sliceKey}`, payload: newState }, context.store);
         };
 
         const { store } = context;
