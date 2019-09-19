@@ -69,10 +69,6 @@ export function createState<T>(sliceKey: string, defaultValue: T) {
         }, [sliceListeners]);
 
         const updateState = (newState: T) => {
-            if (newState === undefined) {
-                throw new TypeError(`GlobalStore[${sliceKey}] can't be set to undefined`);
-            }
-
             if (newState === context.store[sliceKey]) {
                 return;
             }
