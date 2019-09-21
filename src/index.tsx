@@ -9,6 +9,7 @@ type ContextType<T = unknown> = {
 type Listener = Set<() => void>;
 
 const devUtils = connectViaExtension();
+let idx = 0;
 
 const StateContext = React.createContext<ContextType>({
     store: {},
@@ -47,8 +48,14 @@ export function StateProvider({ value, children }: Props) {
     return <StateContext.Provider value={context}>{children}</StateContext.Provider>;
 }
 
-let idx = 0;
-export function createState<T>(sliceKey: string, defaultValue: T) {
+export function createState<T>(
+    sliceKey: string,
+): () => readonly [T | undefined, (newState: T | undefined) => void, () => void];
+export function createState<T>(
+    sliceKey: string,
+    defaultValue: T,
+): () => readonly [T, (newState: T) => void, (newState: T) => void];
+export function createState<T>(sliceKey: string, defaultValue?: T) {
     return () => {
         const [, setState] = React.useState(0);
         const forceUpdate = () => setState(++idx);
@@ -86,6 +93,6 @@ export function createState<T>(sliceKey: string, defaultValue: T) {
 
         const returnValue = Object.hasOwnProperty.call(store, sliceKey) ? store[sliceKey] : defaultValue;
 
-        return [returnValue, updateState] as const;
+        return [returnValue, updateState, updateState] as const;
     };
 }
