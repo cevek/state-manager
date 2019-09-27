@@ -75,7 +75,7 @@ export function createState<T>(sliceKey: string, defaultValue?: T) {
             };
         }, [sliceListeners]);
 
-        const updateState = (newState: T) => {
+        const updateState = React.useCallback((newState: T) => {
             if (newState === context.store[sliceKey]) {
                 return;
             }
@@ -87,7 +87,7 @@ export function createState<T>(sliceKey: string, defaultValue?: T) {
 
             sliceListeners.forEach(fn => fn());
             devUtils.send({ type: `${sliceKey}`, payload: newState }, context.store);
-        };
+        }, [context, sliceListeners]);
 
         const { store } = context;
 
