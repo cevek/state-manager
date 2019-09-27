@@ -1,6 +1,6 @@
 {
-    "name": "@cevek/state",
-    "version": "1.0.7",
+    "name": "statio",
+    "version": "1.0.8",
     "description": "",
     "main": "dist/index",
     "types": "dist/index",
@@ -11,8 +11,8 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "react": "^16.9.0",
         "@types/react": "^16.9.2",
+        "react": "^16.9.0",
         "remotedev": "^0.2.9"
     },
     "files": [
