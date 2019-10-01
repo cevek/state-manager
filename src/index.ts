@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { connectViaExtension, extractState } from 'remotedev';
 
 type KeyData = {
     listeners: Listener;
@@ -27,7 +26,7 @@ function setStateInvariant() {
     throw new Error('You cannot update state inside validate');
 }
 
-const devUtils = connectViaExtension();
+const devUtils = __REDUX_DEVTOOLS_EXTENSION__();
 type Current = { context: ContextType; dependantKey: string };
 let current: Current | undefined;
 
@@ -54,7 +53,7 @@ export function StateProvider({ value, children }: Props) {
             if (message.type !== 'DISPATCH') {
                 return;
             }
-            context.store = extractState(message);
+            context.store = message;
 
             for (let [, keyData] of context.keyData) {
                 keyData.listeners.forEach(listener => listener());
