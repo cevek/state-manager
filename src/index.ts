@@ -26,7 +26,8 @@ function setStateInvariant() {
     throw new Error('You cannot update state inside validate');
 }
 
-const devUtils = __REDUX_DEVTOOLS_EXTENSION__();
+const devUtils =
+    typeof __REDUX_DEVTOOLS_EXTENSION__ !== 'undefined' ? __REDUX_DEVTOOLS_EXTENSION__.connect() : undefined;
 type Current = { context: ContextType; dependantKey: string };
 let current: Current | undefined;
 
@@ -47,22 +48,24 @@ export function StateProvider({ value, children }: Props) {
     });
     const context: ContextType = value ? { store: value, keyData: state.keyData } : state;
 
-    React.useEffect(() => {
-        devUtils.init(context.store);
-        devUtils.subscribe(message => {
-            if (message.type !== 'DISPATCH') {
-                return;
-            }
-            context.store = message;
+    if (devUtils !== undefined) {
+        React.useEffect(() => {
+            devUtils.init(context.store);
+            devUtils.subscribe(message => {
+                if (message.type !== 'DISPATCH') {
+                    return;
+                }
+                context.store = message;
 
-            for (let [, keyData] of context.keyData) {
-                keyData.listeners.forEach(listener => listener());
-            }
-        });
-        return () => {
-            devUtils.unsubscribe();
-        };
-    }, [context]);
+                for (let [, keyData] of context.keyData) {
+                    keyData.listeners.forEach(listener => listener());
+                }
+            });
+            return () => {
+                devUtils.unsubscribe();
+            };
+        }, [context]);
+    }
 
     return React.createElement(StateContext.Provider, { value: context, children });
 }
@@ -136,7 +139,9 @@ function setGlobalState<T>(context: ContextType, key: string, newSt: T) {
     };
 
     listeners.forEach(call);
-    devUtils.send({ type: key, payload: newState }, context.store);
+    if (devUtils !== undefined) {
+        devUtils.send({ type: key, payload: newState }, context.store);
+    }
     dependantsList.forEach(dKey => {
         const hasDKey = Object.hasOwnProperty.call(context.store, dKey);
         const dState = hasDKey ? context.store[dKey] : defaultValue;
