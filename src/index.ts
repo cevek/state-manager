@@ -15,6 +15,7 @@ type Global<T> = {
     key: string;
     validate: (val: T) => T;
     defaultValue: T;
+    serializer: StateSerializer<T>;
 };
 
 let counter = 0;
@@ -73,9 +74,10 @@ export function StateProvider({ value, children }: Props) {
 export function createNullableState<T>(
     key: string,
     validate?: (newValue: T | undefined) => T | undefined,
+    serializer?: StateSerializer<T | undefined>,
     defaultValue?: T,
 ) {
-    return createState<T | undefined>(key, defaultValue, validate) as () => [
+    return createState<T | undefined>(key, defaultValue, validate, serializer) as () => [
         T | undefined,
         (value: T | undefined) => void,
         () => void,
@@ -86,9 +88,10 @@ export function createState<T>(
     key: string,
     defaultValue: T,
     validate: (newValue: T) => T = v => v,
+    serializer: StateSerializer<T> = { serialize: val => val, deserialize: val => val as T },
 ): () => [T, (value: T) => void, (value: T) => void] {
     const defaultVal = defaultValue!;
-    const glob: Global<T> = { key: key, validate: validate, defaultValue: defaultVal };
+    const glob: Global<T> = { key: key, validate: validate, defaultValue: defaultVal, serializer };
     Globals.set(key, glob);
     return () => {
         if (current !== undefined) {
@@ -97,7 +100,7 @@ export function createState<T>(
             const { dependantsList } = getOrCreate(context.keyData, key, keyDataDefaultFactory);
             const keyExits = Object.hasOwnProperty.call(context.store, key);
             const returnValue = keyExits
-                ? context.store[key]
+                ? callInContext({ dependantKey: key, context }, serializer.deserialize, context.store[key])
                 : callInContext({ dependantKey: key, context }, validate, defaultVal);
 
             dependantsList.add(current.dependantKey);
@@ -113,38 +116,44 @@ export function createState<T>(
         const { store } = context;
         const keyExits = Object.hasOwnProperty.call(store, key);
 
-        React.useEffect(() => {
+        React.useLayoutEffect(() => {
             listeners.add(forceUpdate);
             return () => {
                 listeners.delete(forceUpdate);
             };
         }, [listeners, forceUpdate]);
 
-        const returnValue = keyExits ? store[key] : callInContext({ dependantKey: key, context }, validate, defaultVal);
+        const returnValue = keyExits
+            ? callInContext({ dependantKey: key, context }, serializer.deserialize, store[key])
+            : callInContext({ dependantKey: key, context }, validate, defaultVal);
         return [returnValue, updateState, updateState];
     };
 }
 
 function setGlobalState<T>(context: ContextType, key: string, newSt: T) {
-    const { validate, defaultValue } = Globals.get(key) as Global<T>;
+    const { validate, defaultValue, serializer } = Globals.get(key) as Global<T>;
     const { listeners, dependantsList } = getOrCreate(context.keyData, key, keyDataDefaultFactory);
     const newState = callInContext({ dependantKey: key, context }, validate, newSt);
-    if (newState === context.store[key]) {
+    const serializedState = callInContext({ dependantKey: key, context }, serializer.serialize, newState);
+    if (serializedState === context.store[key]) {
         return;
     }
 
     context.store = {
         ...context.store,
-        [key]: newState,
+        [key]: serializedState,
     };
 
     listeners.forEach(call);
     if (devUtils !== undefined) {
-        devUtils.send({ type: key, payload: newState }, context.store);
+        devUtils.send({ type: key, payload: serializedState }, context.store);
     }
     dependantsList.forEach(dKey => {
         const hasDKey = Object.hasOwnProperty.call(context.store, dKey);
-        const dState = hasDKey ? context.store[dKey] : defaultValue;
+        const dDeserialize = Globals.get(dKey)!.serializer.deserialize;
+        const dState = hasDKey
+            ? callInContext({ dependantKey: key, context }, dDeserialize, context.store[dKey])
+            : defaultValue;
         setGlobalState(context, dKey, dState);
     });
 }
@@ -177,6 +186,19 @@ function getOrCreate<K, V>(map: Map<K, V>, key: K, insert: () => V & {}) {
     return newVal;
 }
 
+export type StateSerializer<T, S = any> = {
+    serialize: (value: T) => S;
+    deserialize: (serialized: S) => T;
+};
+export function createStateSerializer<T, S>(
+    serialize: (value: T) => S,
+    deserialize: (serialized: S) => T,
+): StateSerializer<T, S> {
+    return {
+        serialize,
+        deserialize,
+    };
+}
 // function createContextIfEmpty<T>(context: ContextType, key: string, calc: (val: T) => T, defaultValue: T) {
 //     if (!Object.hasOwnProperty.call(context.store, key)) {
 //         context.store[key] = callInContext({ dependantKey: key, context }, calc, defaultValue);
